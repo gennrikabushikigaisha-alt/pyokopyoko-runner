@@ -43,7 +43,7 @@ let state = STATE.READY;
 let hero, enemies, stars, floaters, lives, defeated, goal, spawnT, frame, winT, overAt, shake;
 let best = Number(localStorage.getItem("heroBest") || 0); // 最高クリアタイム的に最多救出? ここでは最短クリア不要、最高連続KOを記録
 enemies = []; stars = []; floaters = [];
-frame = 0; winT = 0; shake = 0; lives = 3; defeated = 0; goal = 10;
+frame = 0; winT = 0; shake = 0; lives = 3; defeated = 0; goal = 3;
 hero = { x: 0, y: 0, r: 34, punchT: 0, hurtT: 0, faceT: 0, bob: 0 }; // READY画面でも描画するので最初から用意
 
 function reset() {
@@ -51,7 +51,7 @@ function reset() {
   resize();
   hero.y = GROUND_TOP - hero.r;
   enemies = []; stars = []; floaters = [];
-  lives = 3; defeated = 0; goal = 10;
+  lives = 3; defeated = 0; goal = 3;
   spawnT = 60; frame = 0; winT = 0; shake = 0;
   state = STATE.PLAY;
 }
@@ -59,7 +59,8 @@ function reset() {
 function punch() {
   if (hero.punchT > 6) return;       // 連打しすぎ防止
   hero.punchT = 14;
-  const reach = hero.r * 2.6;
+  hero.punchHit = null;
+  const reach = hero.r * 3.2;
   const front = hero.x + hero.r * 0.6;
   // 射程内で一番近い悪者をKO
   let target = null;
@@ -70,11 +71,14 @@ function punch() {
     }
   }
   if (target) {
+    // お腹の中心(命中点)を記録 → 拳がここまで正確に届く
+    const bellyX = target.x, bellyY = target.y + target.r * 0.25;
+    hero.punchHit = { dx: bellyX - hero.x, dy: bellyY - hero.y };
     target.ko = true;
     target.vx = 7 * unit; target.vy = -11 * unit; target.spin = 0.3;
     defeated++;
-    for (let i = 0; i < 12; i++)
-      stars.push({ x: target.x - target.r * 0.4, y: target.y, vx: (Math.random() - 0.3) * 7, vy: (Math.random() - 0.8) * 7, life: 1 });
+    for (let i = 0; i < 14; i++)
+      stars.push({ x: bellyX, y: bellyY, vx: (Math.random() - 0.3) * 7, vy: (Math.random() - 0.8) * 7, life: 1 });
     shake = 6;
     if (defeated >= goal) winGame();
   }
@@ -211,13 +215,16 @@ function drawPigHero(cx, cy, r, expr) {
     ctx.fillStyle = "#ff3d7f";
     ctx.beginPath(); ctx.moveTo(-r * 0.35, -r * 0.18); ctx.lineTo(r * 0.78, -r * 0.18); ctx.lineTo(r * 0.78, r * 0.05); ctx.quadraticCurveTo(r * 0.2, -r * 0.02, -r * 0.35, r * 0.05); ctx.closePath();
     ctx.globalAlpha = 0.0; ctx.globalAlpha = 1;
-    // パンチの腕
-    const pr = hero.punchT > 0 ? Math.sin((hero.punchT / 14) * Math.PI) : 0;
-    const fx = r * 0.7 + pr * r * 2.4;
-    ctx.fillStyle = "#f5a9c4";
-    ctx.fillRect(0, -r * 0.05, fx, r * 0.22);
-    ctx.fillStyle = "#ff8fb5";
-    ctx.beginPath(); ctx.arc(fx, r * 0.06, r * 0.32, 0, Math.PI * 2); ctx.fill();
+    // パンチの腕 — 拳が悪者のお腹(命中点)まで正確に伸びる
+    if (hero.punchT > 0) {
+      const pr = Math.sin((hero.punchT / 14) * Math.PI); // 0→1→0
+      const fx = (hero.punchHit ? hero.punchHit.dx : r * 2.8) * pr;
+      const fy = (hero.punchHit ? hero.punchHit.dy : r * 0.06) * pr;
+      ctx.strokeStyle = "#f5a9c4"; ctx.lineWidth = r * 0.26; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(0, r * 0.06); ctx.lineTo(fx, fy); ctx.stroke();
+      ctx.fillStyle = "#ff8fb5";
+      ctx.beginPath(); ctx.arc(fx, fy, r * 0.32, 0, Math.PI * 2); ctx.fill();
+    }
   });
 }
 
@@ -361,8 +368,8 @@ function draw() {
     for (const f of floaters) { ctx.globalAlpha = Math.max(0, f.life); drawHeartIcon(f.x, f.y, f.r, true); }
     ctx.globalAlpha = 1;
     ctx.fillStyle = "rgba(255,170,200,0.45)"; ctx.fillRect(0, 0, W, H);
-    text("YOU ARE A HERO!", H * 0.4, clamp(40 * unit, 26, 52), "#fff");
-    text("You rescued the bunny!", H * 0.5, clamp(22 * unit, 15, 28), "#fff3b0");
+    text("YOU ARE A HERO!", H * 0.38, clamp(40 * unit, 26, 52), "#fff");
+    text("LOVE YOU ♡", H * 0.49, clamp(30 * unit, 20, 38), "#fff3b0");
     text("Tap to play again", H * 0.62, clamp(18 * unit, 13, 22), "#fff");
   }
   if (state === STATE.OVER) {
