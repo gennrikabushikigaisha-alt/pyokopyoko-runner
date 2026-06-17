@@ -52,6 +52,8 @@ function resize() {
 const STATE = { SELECT: 0, PLAY: 1, OVER: 2 };
 let state = STATE.SELECT;
 let player, partnerKind, obstacles, hearts, sparks, traveled, score, best, speed, spawnDist, overAt, blink;
+sparks = [];          // スタート画面でも update() から参照されるので最初から空配列
+blink = 0;
 best = Number(localStorage.getItem("runnerBest") || 0);
 let chosen = localStorage.getItem("runnerChar") || "bunny";
 
@@ -349,14 +351,15 @@ function drawWorld() {
   }
 }
 
-function drawText(text, y, size, color, align) {
+function drawText(text, y, size, color, align, x) {
   ctx.fillStyle = color || "#fff";
   ctx.font = `bold ${size}px sans-serif`;
   ctx.textAlign = align || "center";
   ctx.lineWidth = size * 0.12;
   ctx.strokeStyle = "rgba(214,120,160,0.5)";
-  ctx.strokeText(text, align === "left" ? 20 : W / 2, y);
-  ctx.fillText(text, align === "left" ? 20 : W / 2, y);
+  const px = x != null ? x : (align === "left" ? 20 : W / 2);
+  ctx.strokeText(text, px, y);
+  ctx.fillText(text, px, y);
 }
 
 // ===== 画面 =====
@@ -369,10 +372,10 @@ function draw() {
     const cy = H * 0.5, cr = clamp(50 * unit, 34, 70);
     // うさぎ(左)
     drawChar("bunny", W * 0.3, cy, cr, 0, false);
-    drawText("うさぎちゃん", cy + cr * 1.7, clamp(20 * unit, 14, 24), "#ff7fa8");
+    drawText("うさぎちゃん", cy + cr * 1.7, clamp(20 * unit, 14, 24), "#ff7fa8", "center", W * 0.3);
     // ぶた(右)
     drawChar("pig", W * 0.7, cy, cr, 0, false);
-    drawText("ぶたさん", cy + cr * 1.7, clamp(20 * unit, 14, 24), "#ff7fa8");
+    drawText("ぶたさん", cy + cr * 1.7, clamp(20 * unit, 14, 24), "#ff7fa8", "center", W * 0.7);
     drawText("▲ タップでスタート ▲", H * 0.82, clamp(18 * unit, 13, 22), "#a86b86");
     return;
   }
